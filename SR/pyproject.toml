@@ -1,0 +1,49 @@
+[tool.briefcase]
+project_name = "SR"
+bundle = "com.example"
+version = "0.0.1"
+url = "https://example.com/SR"
+license = "BSD license"
+author = 'jonggurl'
+author_email = "jonggurl96@naver.com"
+
+[tool.briefcase.app.SR]
+formal_name = "SR"
+description = "Graduation Report Application for PC and Mobile"
+icon = "src/SR/resources/SR"
+sources = ['src/SR']
+requires = []
+
+
+[tool.briefcase.app.SR.macOS]
+requires = [
+    'toga-cocoa>=0.3.0.dev20',
+]
+
+[tool.briefcase.app.SR.linux]
+requires = [
+    'toga-gtk>=0.3.0.dev20',
+]
+system_requires = [
+    'libgirepository1.0-dev',
+    'libcairo2-dev',
+    'libpango1.0-dev',
+    'libwebkitgtk-3.0-0',
+    'gir1.2-webkit-3.0',
+]
+
+[tool.briefcase.app.SR.windows]
+requires = [
+    'toga-winforms>=0.3.0.dev20',
+]
+
+# Mobile deployments
+[tool.briefcase.app.SR.iOS]
+requires = [
+    'toga-iOS>=0.3.0.dev20',
+]
+
+[tool.briefcase.app.SR.android]
+requires = [
+    'toga-android>=0.3.0.dev20',
+]
