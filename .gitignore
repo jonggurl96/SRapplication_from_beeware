@@ -1,2 +1,4 @@
 /venv
 /images
+/.vscode
+/preprocessing/__pycache__

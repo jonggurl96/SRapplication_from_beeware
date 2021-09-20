@@ -5,6 +5,11 @@ import toga
 from toga.style import Pack
 from toga.style.pack import COLUMN, ROW, CENTER
 
+import numpy as np
+import PIL as pil
+import datetime
+import tensorflow as tf
+
 input_image_view_style = Pack(
     width=300, height=300, alignment=CENTER,
     font_weight='bold', background_color='#4A868C',
@@ -24,41 +29,71 @@ title_label_pack = Pack(
     color='#FFFFFF'
 )
 
+def new_file_path():
+    return datetime.datetime.now().strftime("%Y%m%d%H%M%S")
 
 class SR(toga.App):
 
     def file_open(self, event_source):
         try:
             open_file_path = self.main_window.open_file_dialog("Choose Photo")
-            print(open_file_path)
-            self.before = toga.images.Image(open_file_path)
-            self.image_view.image = self.before
+            self.input_image = pil.Image.open(open_file_path).convert("RGB")
+            self.input_image = np.array(self.input_image) / 255.0
+            self.image_view.image = toga.images.Image(open_file_path)
         except ValueError:
             pass
 
+    def new_filename(self):
+        now = datetime.datetime.now()
+        now = now.strftime('%Y%m%d_%H%M%S')
+        return "sr_" + now + ".jpg"
+
     def save(self, *args, **kwargs):
-        print(*args)
         # 결과 이미지인 self.res_img.image를 저장한다.
-        self.main_window.save_file_dialog("저장 위치 선택", "filename", "JPEG")
+        try:
+            file_save_path = self.main_window.save_file_dialog("저장 위치 선택", self.new_filename())
+            with pil.Image.open("src\\SR\\tmp_imgs\\" + self.fn + ".jpg") as im:
+                im.save(file_save_path)
+                im.close()
+        except ValueError:
+            pass
 
     def click_before(self, *args, **kwargs):
         self.result_box.remove(self.res_img)
         self.result_box.insert(0, self.image_view)
-        self.after_btn.style.background_color = '#0000FF'
-        self.before_btn.style.background_color = '#0000AA'
+        self.after_btn.style.background_color = '#306065'
+        self.before_btn.style.background_color = '#234549'
 
     def click_after(self, *args, **kwargs):
         self.result_box.remove(self.image_view)
         self.result_box.insert(0, self.res_img)
-        self.after_btn.style.background_color = '#0000AA'
-        self.before_btn.style.background_color = '#0000FF'
+        self.after_btn.style.background_color = '#234549'
+        self.before_btn.style.background_color = '#306065'
+
+    def predict(self):
+        result = None
+        model = tf.keras.models.load_model('model_200.h5')
+        result = model.predict(self.input_image.reshape((1, 300, 300, 3)))
+        result = (result * 255).astype(np.uint8)
+        self.fn = new_file_path()
+        with pil.Image.fromarray(result.reshape((300, 300, 3))) as result:
+            result.save("src\\SR\\tmp_imgs\\" + self.fn + ".jpg")
+            result.close()
+
+    def back(self, *args, **kwargs):
+        no_img = toga.images.Image("resources\\no_img.PNG")
+        self.image_view.image = no_img
+        self.container_box.style.visibility = 'hidden'
+        self.main_box.style.visibility = 'visible'
 
     def srStart(self, evenv_source):
-        # if self.image_view.image == self.no_img:
-        #     self.main_window.error_dialog("Error", "사진을 선택하세요")
-        #     return
+        if self.image_view.image == self.no_img:
+            self.main_window.error_dialog("Error", "사진을 선택하세요")
+            return
+        
+        # model 불러와서 예측하기~~~
+        self.predict()
 
-        self.main_box.style.visibility = 'hidden'
         self.result_box = toga.Box(style=Pack(
             direction=COLUMN, alignment=CENTER,
             background_color='#4A868C'
@@ -66,7 +101,7 @@ class SR(toga.App):
 
         # 결과 이미지
         self.res_img = toga.ImageView(style=input_image_view_style,
-                                      image=toga.images.Image('C:\\Users\\LeeJongGeol\\Desktop\\new_model\\cropped_imgs\\test\\2018.jpg'))
+                                      image=toga.images.Image("tmp_imgs\\" + self.fn + ".jpg"))
         self.result_box.add(self.res_img)
 
         # 버튼과 ImageView 배치
@@ -86,15 +121,21 @@ class SR(toga.App):
         self.container.add(self.result_box)
 
         save_btn = toga.Button("저장하기", on_press=self.save, style=Pack(
+            padding_top=10, width=300, height=40, font_size=17, font_weight='bold',
+            background_color="#121213", color='#86B8BE'
+        ))
+
+        back_btn = toga.Button("처음으로", on_press=self.back, style=Pack(
             padding_top=10, width=300, height=40, padding_bottom=45, font_size=17, font_weight='bold',
             background_color="#121213", color='#86B8BE'
         ))
 
         resultpage_title = toga.Label("복원 전후 비교", style=title_label_pack)
 
-        container_box = toga.Box(style=main_window_content_style,
-                                 children=[resultpage_title, self.container, save_btn])
-        self.main_window.content = container_box
+        self.container_box = toga.Box(style=main_window_content_style,
+                                 children=[resultpage_title, self.container, save_btn, back_btn])
+        self.main_box.style.visibility = 'hidden'
+        self.main_window.content = self.container_box
 
     def startup(self):
         """
